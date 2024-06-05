@@ -1,0 +1,47 @@
+step1::
+
+open cmd in snowflake_airflow_project folder and give command --> "winget install -e --id Astronomer.Astro"
+
+
+step2::
+
+open the snowflake_airflow_project in VS studio and install Astro package by giving --> "astro dev init" in ther terminal (Astro is package to manage airflow)
+
+
+step3::
+
+Now can see dags,include etc... files in the main project folder after Astro is installed
+
+step4::
+
+Now try to add the commands to establish connection b/w airflow,snowflake,aws.
+
+astro-sdk-python[amazon,snowflake] >= 1.1.0
+apache-airflow-providers-amazon==8.17.0
+apache-airflow-providers-snowflake==5.5.0
+
+Add this commands to install libraries to establish connection  in the requirements.txt
+
+
+step5::
+
+Now goto 'env' file in the project folder to setup settings for aiflow credenetials
+
+AIRFLOW__CORE__ENABLE_XCOM_PICKLING=True
+AIRFLOW__ASTRO_SDK__SQL_SCHEMA=ASTRO_SDK_SCHEMA
+AIRFLOW__CORE__TEST_CONNECTION =enabled
+
+paste this commands in the "env" file
+
+
+step6::
+
+make sure Docker Engine is running(docker will take caee of all requirmenets like postgre,aws etc..so we no need to set up it manually) and in the terminal try to start Astro by giving  --> "astro dev start" to go to airflow UI
+
+step7::in the airflow login , give
+       username ::admin
+       password ::admin
+
+step8::
+ 
+to stop airflow give --> "astro dev stop" in the project terminal

@@ -1,0 +1,6 @@
+# Astro Runtime includes the following pre-installed providers packages: https://docs.astronomer.io/astro/runtime-image-architecture#provider-packages
+astro-sdk-python[amazon,snowflake] >= 1.1.0
+apache-airflow-providers-amazon==8.17.0
+apache-airflow-providers-snowflake==5.5.0
+apache-airflow-providers-sendgrid
+pandas

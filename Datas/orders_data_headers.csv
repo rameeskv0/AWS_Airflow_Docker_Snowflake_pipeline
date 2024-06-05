@@ -1,0 +1,4 @@
+order_id,customer_id,purchase_date,amount
+ORDER1,CUST1,1/1/2021,100
+ORDER2,CUST2,2/2/2022,200
+ORDER3,CUST3,3/3/2023,300

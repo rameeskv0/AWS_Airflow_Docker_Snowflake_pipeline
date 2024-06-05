@@ -1,0 +1,239 @@
+step1::
+
+open cmd in snowflake_airflow_project folder and give command --> "winget install -e --id Astronomer.Astro" for Astro installation for accessing Airflow
+
+
+step2::
+
+open the snowflake_airflow_project in VS studio and install Astro package by giving --> "astro dev init" in ther terminal (Astro is package to manage airflow)
+
+
+
+step3::
+
+Now can see dags,include etc... files in the main project folder after Astro is installed
+
+can also see a dockerfile in which the docker image is downloaded
+
+step4::
+
+Now try to add the commands to establish connection b/w airflow,snowflake,aws.
+
+astro-sdk-python[amazon,snowflake] >= 1.1.0
+apache-airflow-providers-amazon==8.17.0
+apache-airflow-providers-snowflake==5.5.0
+
+Add this commands to install libraries to establish connection  in the requirements.txt
+
+
+step5::
+
+Now goto 'env' file in the project folder to setup settings for aiflow credenetials
+
+AIRFLOW__CORE__ENABLE_XCOM_PICKLING=True
+AIRFLOW__ASTRO_SDK__SQL_SCHEMA=ASTRO_SDK_SCHEMA
+AIRFLOW__CORE__TEST_CONNECTION =enabled
+
+paste this commands in the "env" file
+
+
+step6::
+
+make sure Docker Engine is running(docker will take caee of all requirmenets like postgre,aws etc..so we no need to set up it manually) and in the terminal try to start Astro by giving  --> "astro dev start" to go to airflow UI
+
+docker need to stop when a new libraries is installed and re start it again,docker container takes only library inside in it
+
+step7::in the airflow login , give
+       username ::admin
+       password ::admin
+
+step8::
+ 
+to stop airflow give --> "astro dev stop" in the project terminal
+
+step9::(AWS Part)
+
+adding the data in the aws S3 (created a new bucket as "airflow-snowflake-data") and in that bucket upload orders_data_headers.csv (uploaded from the project_folder/Datas)
+
+Airflow is outside app,so to access data in s3 need to give credentials in IAM to access that data
+
+for that goto IAM and create new user as "astro-airflow-sdk" and add policies directly 
+
+attach "AdministratorAccess" policy and complete the user creation and download the credential file and save it in the project folder
+
+
+
+go back to the users and select the "astro-airflow-sdk" and create an access key (select local code mode) and generate the access key and download it also and save it in the project credentials folder
+
+
+step10::
+
+goto snowflake and create a new sql worksheet and paste the codes
+
+CREATE DATABASE ASTRO_SDK_DB;
+
+CREATE WAREHOUSE ASTRO_SDK_DW;
+
+CREATE SCHEMA ASTRO_SDK_SCHEMA;
+
+
+CREATE OR REPLACE TABLE customers_table (customer_id CHAR(10), customer_name VARCHAR(100), type VARCHAR(10) );
+
+INSERT INTO customers_table (CUSTOMER_ID, CUSTOMER_NAME,TYPE) VALUES ('CUST1','NAME1','TYPE1'),('CUST2','NAME2','TYPE1'),('CUST3','NAME3','TYPE2');
+
+
+CREATE OR REPLACE TABLE reporting_table (
+CUSTOMER_ID CHAR(30), CUSTOMER_NAME VARCHAR(100), ORDER_ID CHAR(10), PURCHASE_DATE DATE, AMOUNT FLOAT, TYPE CHAR(10));
+
+INSERT INTO reporting_table (CUSTOMER_ID, CUSTOMER_NAME, ORDER_ID, PURCHASE_DATE, AMOUNT, TYPE) VALUES
+('INCORRECT_CUSTOMER_ID','INCORRECT_CUSTOMER_NAME','ORDER2','2/2/2022',200,'TYPE1'),
+('CUST3','NAME3','ORDER3','3/3/2023',300,'TYPE2'),
+('CUST4','NAME4','ORDER4','4/4/2022',400,'TYPE2');
+
+
+run each code one by one by selecting each and clicking "Run"
+
+
+created new tables for some analytical purposes
+
+
+step11::
+
+goto Airflow ui and goto Admin and add new connection 
+
+give 
+"aws_deafult" as connection id
+"Amazon Web Services" as connection type(for connecting with s3 where we uploaded the data)
+
+give aws access key ID and secret access key also try to give both in the columns also try to give Extras also as
+
+Extras as { "aws_access_key_id":"AKIA25NBF5YMOMVAL76Q"
+             "aws_secret_access_key:"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"
+           }
+
+
+
+(need to stop Astro and re start Astro if any changes made)
+
+step12::
+
+
+add new connection for snowflake also in the Admin
+
+give
+
+"snowflake default" as connection id
+"snowflake" as connection type
+
+Login :: Rameeskv
+pass :: Rameeskv12#
+
+a/c : wm72826.ap-southeast-1
+role : ACCOUNTADMIN
+
+also give warehouse and database as created in the worksheet
+
+test and save
+
+
+step13::
+
+Now goto the VS code project directry in the Dag folder create new py (astro_orders.py) file in which we write the code for automation
+
+
+copy the code from "https://github.com/ansel9618/AWS_Snowflake_pipeline/blob/main/astro_orders_airflowcode.py" and paste there
+change S3 as:s3://airflow-snowflake-data
+(from aws S3 S3 url :: s3://airflow-snowflake-data(from s3 url of s3://airflow-snowflake-data/orders_data_headers.csv))
+
+automation tasks::
+
+-First we'll load the file which is present in S3 bucket into a table
+-we are going to filter the orders from the from the table
+-next we'll join the order with the customers table
+-Next we'll the merge the data into reporting table
+-transforming the data from reporting table to get the purchase dates
+-finally we'll clear out all the temporary tables created
+
+
+1st in the auomation tasks)
+
+with DAG(dag_id='astro_ytcode',start_date=datetime(2024,5,22),schedule='@daily',catchup=False):
+    orders_data = aql.load_file(
+        input_file = File(path=S3_FILE_PATH + "/orders_data_headers.csv", conn_id=S3_CONN_ID),
+        output_table=Table(conn_id=SNOWFLAKE_CONN_ID)
+    )
+
+in this code for creating a DAG can see taking file from s3 and uploading in a temp table in the snowflake without any name (output_table=Table(conn_id=SNOWFLAKE_CONN_ID),only table is mentioned ,no name)
+
+
+Now simply Goto Airflow page and goto DAG ,can see a new dag created as "astro_ytcode"
+
+check the graph in the "astro_ytcode"
+
+2)filtering (need to give it as a separate fn)
+
+@aql.transform      #decortrs are given for easy integration
+def filter_orders(input_table:Table):
+    return "SELECT * FROM {{input_table}} WHERE amount > 150"
+
+
+now need to call it,for that
+filter_orders(orders_data)
+
+
+but we give it as combines while calling the function 
+
+my objective was to filter the orders table where Table(we mentioned it as output file to be storead as Table in the snowflake) is stored and join with customer table.so i created another function for joining 
+
+ie 
+@aql.transform
+def join_orders_customers(filtered_orders_table: Table,customers_table:Table):
+    return """SELECT c.customer_id, customer_name, order_id, purchase_date,amount,type
+    FROM {{filtered_orders_table}} f JOIN {{customers_table}} c
+    ON f.customer_id = c.customer_id"""
+
+called both filter and joining in 1 call
+
+joined_data = join_orders_customers(filter_orders(orders_data),customers_table)
+
+
+
+3)
+now we want to merge this joined table with reporting table in the snowflake(we created it snowflake in the worksheet "astro_SDK_worksheet1")
+
+
+ reporting_table = aql.merge(
+        target_table=Table(
+            name=SNOWFLAKE_REPORTING,
+            conn_id=SNOWFLAKE_CONN_ID),
+
+        source_table=joined_data,
+        target_conflict_columns=["order_id"],
+        columns=["customer_id","customer_name"],
+        if_conflicts = "update"
+        )
+we gave if_conflicts = "update" bcs when we are merging if same id or another column with same value enter we want update,otherwise error will occur
+
+4)
+-transforming the data from reporting table to get the purchase dates
+
+
+@aql.dataframe
+def transform_dataframe(df: DataFrame):
+    purchase_dates = df.loc[:,"purchase_date"]
+    print("purchase dates:", purchase_dates)
+    return purchase_dates
+
+calling the fn --> purchase_dates = transform_dataframe(reporting_table)
+
+
+
+
+  purchase_dates >> aql.cleanup() --> this code is the one which calling to create the DAG , ie to start from purchase table(for purchase table need to create filtered and Table so DAG will create ,likely from top dag will create things mentioned in backwards)
+
+
+
+
+finally goto Airflow page and select the 
+
+  

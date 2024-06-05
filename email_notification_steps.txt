@@ -1,0 +1,70 @@
+email notification::
+
+
+1)create identity in AWS SES
+
+2)verify identity user
+
+3)goto Account dashboard/SMTP seetings (copy "SMTP endpoint" also save it)-->create smtp credentials-->download 
+credentials
+
+4)copy venv in .venv
+
+AIRFLOW__SMTP__SMTP_HOST = email-smtp.ap-south-1.amazonaws.com #SMTP endpoint
+AIRFLOW__SMTP__SMTP_STARTTLS = True
+AIRFLOW__SMTP__SMTP_SS = False
+AIRFLOW__SMTP__SMTP_USER = AKIA25NBF5YMK42LSOL3 #user from smtp credentials downloaded
+AIRFLOW__SMTP__SMTP_PASSWORD = BC/X/oWupcWmrei2/UftTuAOyb9o1Q17yQ5ogEfe2xFb #from smtp password 
+AIRFLOW__SMTP__SMTP_PORT = 587
+AIRFLOW__SMTP__SMTP_MAIL_FROM = 0ramees0@gmail.com
+AIRFLOW__EMAIL__EMAIL_BACKEND = airflow.utils.email.send_email_smtp
+
+
+5)goto Aiflow ui/admin/connections ad new as
+
+
+Connection Id *	smtp_default
+Connection Type * Email	
+
+Description no need to fill	
+Host	email-smtp.ap-south-1.amazonaws.com (smtp endpoint)
+Schema	no need to fill
+Login	AKIA25NBF5YMK42LSOL3 (smtp user from credentials)
+Password	•••••••••••••••••••••••••••••••••••••••••••• (from smtp credentials downloded)
+Port	587
+Extra	no need to fill
+{}
+
+
+click on save
+
+6)create a new .py file in the dag folder :
+
+example.py
+
+from airflow import DAG
+from airflow.operators.email_operator import EmailOperator
+from datetime import datetime
+
+
+default_args = {
+  'owner': 'airflow',
+  'email': ['0ramees0@gmail.com'], 
+  'email_on_failure': True,
+}
+
+with DAG(
+  dag_id='send_email_example',
+  default_args=default_args,
+  start_date=datetime(2024, 5, 24),
+  schedule_interval=None,
+) as dag:
+
+  send_email = EmailOperator(
+      task_id='send_email',
+      to='0ramees0@gmail.com',
+      subject='Airflow Example Email',
+      html_content='<h3>This is a test email from Airflow!</h3>',
+  )
+ 
+
